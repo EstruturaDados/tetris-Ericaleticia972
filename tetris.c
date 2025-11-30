@@ -2,95 +2,121 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define TAMANHO_FILA 5
+#define TAM_FILA 5
+#define TAM_PILHA 3
 
 typedef struct {
     char nome;
     int id;
 } Peca;
 
+Peca fila[TAM_FILA];
+Peca pilha[TAM_PILHA];
+
+int frente = 0;
+int tras = 0;
+int topo = -1;
+int ultimoID = 0;
+
 char tipos[] = {'I', 'O', 'T', 'L'};
 
-Peca gerarPeca(int id) {
-    Peca nova;
-    nova.nome = tipos[rand() % 4];
-    nova.id = id;
-    return nova;
+Peca gerarPeca() {
+    Peca p;
+    p.nome = tipos[rand() % 4];
+    p.id = ultimoID++;
+    return p;
 }
 
-void exibirFila(Peca fila[], int inicio, int fim, int quantidade) {
-    printf("\nFila de peças:\n");
+void enqueue(Peca p) {
+    fila[tras] = p;
+    tras = (tras + 1) % TAM_FILA;
+}
 
-    if (quantidade == 0) {
-        printf("[ Fila vazia ]\n");
-        return;
+Peca dequeue() {
+    Peca p = fila[frente];
+    frente = (frente + 1) % TAM_FILA;
+    return p;
+}
+
+int push(Peca p) {
+    if (topo == TAM_PILHA - 1) return 0;
+    pilha[++topo] = p;
+    return 1;
+}
+
+int pop(Peca *p) {
+    if (topo == -1) return 0;
+    *p = pilha[topo--];
+    return 1;
+}
+
+void exibirEstado() {
+    printf("\n================= ESTADO ATUAL =================\n");
+
+    printf("Fila de pecas:\n");
+    for (int i = 0; i < TAM_FILA; i++) {
+        int idx = (frente + i) % TAM_FILA;
+        printf("[%c %d] ", fila[idx].nome, fila[idx].id);
     }
 
-    int i = inicio;
-    for (int c = 0; c < quantidade; c++) {
-        printf("[%c %d] ", fila[i].nome, fila[i].id);
-        i = (i + 1) % TAMANHO_FILA;
-    }
+    printf("\n\nPilha de reserva (Topo -> Base):\n");
+    if (topo == -1)
+        printf("(vazia)");
+    else
+        for (int i = topo; i >= 0; i--)
+            printf("[%c %d] ", pilha[i].nome, pilha[i].id);
 
-    printf("\n");
+    printf("\n=================================================\n");
 }
 
 int main() {
-    Peca fila[TAMANHO_FILA];
-    int inicio = 0, fim = 0, quantidade = 0;
-    int ultimoID = 0;
-    int opcao;
-
     srand(time(NULL));
 
-    for (int i = 0; i < TAMANHO_FILA; i++) {
-        fila[i] = gerarPeca(ultimoID++);
-        quantidade++;
-        fim = (fim + 1) % TAMANHO_FILA;
-    }
+    // Inicializa fila cheia
+    for (int i = 0; i < TAM_FILA; i++)
+        enqueue(gerarPeca());
+
+    int opcao;
 
     do {
-        system("clear||cls");
+        exibirEstado();
 
-        printf("===== TETRIS STACK — FILA DE PEÇAS =====\n");
-        exibirFila(fila, inicio, fim, quantidade);
-
-        printf("\nOpções:\n");
-        printf("1 - Jogar peça (dequeue)\n");
-        printf("2 - Inserir nova peça (enqueue)\n");
+        printf("\n1 - Jogar peca\n");
+        printf("2 - Reservar peca\n");
+        printf("3 - Usar peca reservada\n");
         printf("0 - Sair\n");
-        printf("Escolha: ");
+        printf("Opcao: ");
         scanf("%d", &opcao);
 
         if (opcao == 1) {
-            if (quantidade == 0) {
-                printf("\nA fila está vazia! Não há peça para jogar.\n");
-            } else {
-                printf("\nPeça jogada: [%c %d]\n", fila[inicio].nome, fila[inicio].id);
-                inicio = (inicio + 1) % TAMANHO_FILA;
-                quantidade--;
-            }
+            Peca jogada = dequeue();
+            printf("\nPeca jogada: [%c %d]\n", jogada.nome, jogada.id);
+
+            // SEMPRE gera nova peça e mantém fila cheia
+            enqueue(gerarPeca());
         }
 
         else if (opcao == 2) {
-            if (quantidade == TAMANHO_FILA) {
-                printf("\nA fila está cheia! Não é possível inserir nova peça.\n");
+            if (topo == TAM_PILHA - 1) {
+                printf("\nPilha cheia! Nao foi possivel reservar.\n");
+                enqueue(gerarPeca());
             } else {
-                fila[fim] = gerarPeca(ultimoID++);
-                fim = (fim + 1) % TAMANHO_FILA;
-                quantidade++;
-                printf("\nNova peça inserida!\n");
+                Peca p = dequeue();
+                push(p);
+                printf("\nPeca reservada: [%c %d]\n", p.nome, p.id);
+                enqueue(gerarPeca());
             }
         }
 
-        if (opcao != 0) {
-            printf("\nPressione ENTER para continuar...");
-            getchar();
-            getchar();
+        else if (opcao == 3) {
+            Peca usada;
+            if (pop(&usada))
+                printf("\nPeca usada: [%c %d]\n", usada.nome, usada.id);
+            else
+                printf("\nNao ha pecas reservadas.\n");
         }
 
     } while (opcao != 0);
 
-    printf("\nEncerrando o simulador...\n");
     return 0;
 }
